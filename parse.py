@@ -63,14 +63,14 @@ class Parse:
         return j
 
     def _3_fix(self, l): # handles 3 matches for ATTR
-        if l[0] in list(self.CT.keys()):
+        if len(l) == 3:
             l = l[1:3]
         return l
 
     def a_fix(self, l): # a-->Array
         parts = re.sub('\[|\]', '\t', l[1]).split('\t')
         if len(parts) > 1:
-            l = [ l[0] + '*' + parts[1], parts[0] ]
+            l = [ l[0] + ' * ' + parts[1], parts[0] ]
         return l
 
     def p_fix(self, l): # p-->Pointer
