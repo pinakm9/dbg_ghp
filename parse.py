@@ -5,8 +5,8 @@ ATTR         =  0
 ADT          =  1
 END          =  2
 
-REGEX = { ATTR    : '^\s*([*\w]*)\s+([*\w\[\]]*)\s*([*\w\[\]]*)?\s*;\s*$',
-          ADT     : '^\s*([^{\s]*)\s*([^{\s]*)\s*([^{\s]*)\s*{\s*$',
+REGEX = { ATTR    : '^\s*([*\w]+)\s+([*\w\[\]]+)\s*([*\w\[\]]*)?\s*;\s*$',
+          ADT     : '^\s*([^{\s]+)\s*([^{\s]+)\s*([^{\s]+)\s*{\s*$',
           END     : '^\s*}([^;]*);\s*$', }
 
 class ParseLine:
@@ -73,30 +73,31 @@ class Parse:
             l = [ l[0] + ' * ' + parts[1], parts[0] ]
         return l
 
-    def p_fix(self, l): # p-->Pointer
-        type_ , var = l[0], l[1].lstrip('*')
+    def p_fix(self, l, ct_on = False): # p-->Pointer
+        type_ , var, module = l[0], l[1].lstrip('*'), 'ctypes.' if ct_on else ''
         pc = len(l[1]) - len(var)
-        type_ = 'ctypes.POINTER(' * pc + type_ + ')' * pc
+        type_ = module + 'POINTER(' * pc + type_ + ')' * pc
         return [type_ , var]
 
-    def t_fix(self, l): # t-->Type
+    def t_fix(self, l, ct_on = False): # t-->Type
+        module = 'ctypes.' if ct_on else ''
         for key in self.CT:
             if l == key:
-                l = 'ctypes.' + self.CT[key]
+                l = module + self.CT[key]
                 break
         return l
 
-    def fix(self, l):
+    def fix(self, l, ct_on = False):
         l = self._3_fix(l)
-        l = self.p_fix(l)
+        l = self.p_fix(l, ct_on)
         l = self.a_fix(l)
         return l
 
-    def push(self, j):
+    def push(self, j, ct_on = False):
         adt = ParseADT( '\n'.join(self.lines[j : self.find_end(j)]) )
         if self.depth > 0:
             adt.names[0] = self.adt.names[0] + '_' + adt.names[0]
-        adt.type = self.t_fix(adt.type)
+        adt.type = self.t_fix(adt.type, ct_on)
         self.depth += 1
         self.stack.append(adt)
         self.adt = adt
@@ -134,6 +135,7 @@ class Parse:
 
     def rewrite(self):
         for line_no, line in enumerate(self.lines):
+            print(line)
             line = ParseLine(line)
             if line.state == ATTR:
                 self.py += '\t("{2}",\t{1}),\n'.format(self.adt.names[0], *self.fix(line.data))
@@ -153,4 +155,4 @@ class Parse:
         self.bubble_class()
         self.py = self.untangle(self.py)
 
-print(Parse('struct.txt').py)
+print("\n================C ends and Python begins=============\n\n" + Parse('struct.txt').py)
